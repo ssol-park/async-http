@@ -2,6 +2,7 @@ package com.psr.webclient17.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -16,10 +17,17 @@ public class ApiService {
         this.webClient = webClient;
     }
 
-    public Mono<String> getSinglePost(int postId) {
+    public Mono<String> getPost(int postId) {
         return webClient.get()
                 .uri(BASE_URL + POSTS_ENDPOINT + "/{id}", postId)
                 .retrieve()
                 .bodyToMono(String.class);
+    }
+
+    public Flux<String> getPosts() {
+        return webClient.get()
+                .uri(BASE_URL + POSTS_ENDPOINT)
+                .retrieve()
+                .bodyToFlux(String.class);
     }
 }
