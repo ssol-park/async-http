@@ -1,6 +1,5 @@
 package com.psr;
 
-
 import com.psr.config.WebClientConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,12 +12,16 @@ import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -89,8 +92,6 @@ class AppTest {
         latch.await();
     }
 
-
-    // TODO ::  Connection Pool, Backpressure, Pending
     @Test
     void WebClient_커넥션풀_확장_테스트() throws InterruptedException {
         int reqSize = 5;
@@ -141,5 +142,35 @@ class AppTest {
         });
 
         Thread.sleep(10000);
+    }
+
+    @Test
+    void WebClient_병렬처리_테스트() throws InterruptedException {
+        List<String> urls = IntStream.rangeClosed(1, 10)
+                .mapToObj(i -> String.format(DELAY_URL, i))
+                .collect(Collectors.toList());
+
+        CountDownLatch latch = new CountDownLatch(urls.size());
+        logger.info("##### 요청 시작");
+
+        Flux.fromIterable(urls)
+                .parallel()
+                .runOn(Schedulers.parallel())
+                .flatMap(url ->
+                    webClient.get()
+                        .uri(url)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .doOnSubscribe(subscription -> logger.info("url: {}", url))
+                        .doOnNext(response -> logger.info("응답 수신: {}", url))
+                        .doOnSuccess(response -> {
+                            logger.info("요청 완료: {}", url);
+                            latch.countDown();
+                        })
+                )
+                .sequential()
+                .subscribe();
+
+        latch.await();
     }
 }
