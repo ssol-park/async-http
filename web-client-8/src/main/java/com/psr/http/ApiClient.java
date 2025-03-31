@@ -1,17 +1,16 @@
-package com.psr.util;
+package com.psr.http;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
-import java.util.Map;
-
 @Component
-public class WebClientUtil {
+public class ApiClient {
 
     private final WebClient webClient;
 
-    public WebClientUtil(WebClient webClient) {
+    public ApiClient(@Qualifier("customWebClient") WebClient webClient) {
         this.webClient = webClient;
     }
 
