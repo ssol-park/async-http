@@ -9,8 +9,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
@@ -54,6 +56,32 @@ class ApiClientTest {
                 .collectList()
                 .doOnNext(posts -> logger.info("post size: {}", posts.size()))
                 .doOnTerminate(() -> latch.countDown())
+                .subscribe();
+
+        latch.await();
+    }
+
+    @Test
+    void 인메모리_사이즈_제한_에러_발생_테스트() throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(1);
+
+        // 1MB 제한 설정한 WebClient
+        WebClient limitedClient = WebClient.builder()
+                .codecs(config -> config
+                        .defaultCodecs()
+                        .maxInMemorySize(1024)) // 1KB 제한
+                .defaultHeader(HttpHeaders.ACCEPT_ENCODING, "identity") // gzip 비활성화
+                .build();
+
+        String url = "https://httpbin.org/bytes/4097152"; // 2MB 응답
+
+        limitedClient.get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(String.class)
+                .doOnNext(body -> logger.info("응답 본문 크기: {} bytes", body.length()))
+                .doOnError(e -> logger.error("에러 발생 {}", e.toString()))
+                .doOnTerminate(latch::countDown)
                 .subscribe();
 
         latch.await();
