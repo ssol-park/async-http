@@ -6,19 +6,29 @@ import com.psr.dto.Post;
 import com.psr.http.ApiClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(SpringExtension.class)
 @ContextConfiguration(classes = {WebClientConfig.class, ApiClient.class})
@@ -85,5 +95,27 @@ class ApiClientTest {
                 .subscribe();
 
         latch.await();
+    }
+
+    static Stream<Arguments> postRequestInfo() {
+        return Stream.of(
+                Arguments.of(
+                        new HashMap<String, Object>() {{
+                            put("data", "본문 내용");
+                        }},
+                        new HashMap<String, Object>() {{
+                            put("X-Test-Header", "hello");
+                        }}
+                )
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("postRequestInfo")
+    void postTest(String url,
+                  Map<String, Object> body,
+                  Map<String, String> headers) {
+        apiClient.post(url, body, headers, new ParameterizedTypeReference<Map<String, Object>>() {})
+                .subscribe();
     }
 }
