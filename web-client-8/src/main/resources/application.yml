@@ -1,0 +1,5 @@
+cert:
+  crt: classpath:test_cert/client.crt
+  key: classpath:test_cert/client.key
+  ca: classpath:test_cert/ca.crt
+  password: psrcert
